@@ -32,6 +32,7 @@ module divider_datapath(
     input shift,
     input subtract,
     input restore,
+    input set_q,
 
     input [31:0] dividend,
     input [31:0] divisor,
@@ -76,6 +77,9 @@ begin
 
         if(restore)
             rem_reg[63:32] <= rem_reg[63:32] + divisor_reg;
+
+        if(set_q)
+            rem_reg[0] <= 1;
 
     end
 

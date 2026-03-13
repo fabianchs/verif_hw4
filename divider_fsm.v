@@ -29,6 +29,7 @@ module divider_fsm(
     output reg shift,
     output reg subtract,
     output reg restore,
+    output reg set_q,
     output reg done
 
 );
@@ -53,6 +54,7 @@ begin
         shift <= 0;
         subtract <= 0;
         restore <= 0;
+        set_q <= 0;
         done <= 0;
     end
 
@@ -62,6 +64,7 @@ begin
         shift <= 0;
         subtract <= 0;
         restore <= 0;
+        set_q <= 0;
 
         case(state)
 
@@ -97,6 +100,8 @@ begin
 
             if(sign)
                 restore <= 1;
+            else
+                set_q <= 1;
 
             count <= count + 1;
 

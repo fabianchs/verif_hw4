@@ -38,6 +38,7 @@ wire shift;
 wire subtract;
 wire restore;
 wire load;
+wire set_q;
 wire sign;
 
 
@@ -51,6 +52,7 @@ divider_datapath datapath(
     .shift(shift),
     .subtract(subtract),
     .restore(restore),
+    .set_q(set_q),
 
     .dividend(dividend),
     .divisor(divisor),
@@ -75,6 +77,7 @@ divider_fsm control(
     .shift(shift),
     .subtract(subtract),
     .restore(restore),
+    .set_q(set_q),
     .done(done)
 
 );
