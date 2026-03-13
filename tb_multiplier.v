@@ -1,79 +1,74 @@
-/*
-Autor: Fabian Chacón
-Módulo: divider32_top
+`timescale 1ns/1ps
 
-Descripción:
-Módulo superior del divisor secuencial de 32 bits.
+module tb_multiplier;
 
-Conecta:
-- FSM (control)
-- Datapath (registros y operaciones)
+reg clk;
+reg reset;
+reg start;
 
-Entradas:
-clk, reset, start
-dividend, divisor
+reg [31:0] a;
+reg [31:0] b;
 
-Salidas:
-quotient
-remainder
-done
-*/
+wire [63:0] result;
+wire done;
 
-module divider32_top(
-
-    input clk,
-    input reset,
-    input start,
-
-    input [31:0] dividend,
-    input [31:0] divisor,
-
-    output [31:0] quotient,
-    output [31:0] remainder,
-    output done
-
-);
-
-wire shift;
-wire subtract;
-wire restore;
-wire sign;
-
-
-// instancia del datapath
-divider_datapath datapath(
-
-    .clk(clk),
-    .reset(reset),
-
-    .shift(shift),
-    .subtract(subtract),
-    .restore(restore),
-
-    .dividend(dividend),
-    .divisor(divisor),
-
-    .quotient(quotient),
-    .remainder(remainder),
-    .sign(sign)
-
-);
-
-
-// instancia de la FSM
-divider_fsm control(
-
+multiplier32_top uut(
     .clk(clk),
     .reset(reset),
     .start(start),
-
-    .sign(sign),
-
-    .shift(shift),
-    .subtract(subtract),
-    .restore(restore),
+    .a(a),
+    .b(b),
+    .result(result),
     .done(done)
-
 );
+
+always #5 clk = ~clk;
+
+initial begin
+
+    $dumpfile("wave.vcd");
+    $dumpvars(0, tb_multiplier);
+
+    clk = 0;
+    reset = 1;
+    start = 0;
+
+    #10 reset = 0;
+
+    a = 7;
+    b = 3;
+
+    start = 1;
+    #10 start = 0;
+
+    wait(done);
+    $display("7 * 3 = %d", result);
+
+    #20;
+
+    a = 10;
+    b = 5;
+
+    start = 1;
+    #10 start = 0;
+
+    wait(done);
+    $display("10 * 5 = %d", result);
+
+    #20;
+
+    a = 25;
+    b = 4;
+
+    start = 1;
+    #10 start = 0;
+
+    wait(done);
+    $display("25 * 4 = %d", result);
+
+    #50;
+    $finish;
+
+end
 
 endmodule

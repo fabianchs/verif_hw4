@@ -1,35 +1,3 @@
-/*
-Autor: Fabian Chacón
-Módulo: multiplier32_top
-
-Descripción:
-Módulo superior del multiplicador secuencial de 32 bits.
-
-Conecta:
-- FSM (control)
-- Datapath (registros + ALU)
-
-Entradas:
-clk, reset, start
-operandos a y b
-
-Salidas:
-result (producto 64 bits)
-done (operación finalizada)
-
-Ejemplo de uso:
-
-multiplier32_top mult(
-    .clk(clk),
-    .reset(reset),
-    .start(start),
-    .a(opA),
-    .b(opB),
-    .result(product),
-    .done(done)
-);
-*/
-
 module multiplier32_top(
 
     input clk,
@@ -44,17 +12,17 @@ module multiplier32_top(
 
 );
 
+wire load;
 wire add;
 wire shift;
 wire lsb;
 
-
-// instancia del datapath
 multiplier_datapath datapath(
 
     .clk(clk),
     .reset(reset),
 
+    .load(load),
     .add(add),
     .shift(shift),
 
@@ -66,16 +34,14 @@ multiplier_datapath datapath(
 
 );
 
-
-// instancia de la FSM
 multiplier_fsm control(
 
     .clk(clk),
     .reset(reset),
     .start(start),
-
     .lsb(lsb),
 
+    .load(load),
     .add(add),
     .shift(shift),
     .done(done)

@@ -1,95 +1,70 @@
-/*
-Autor: Fabian Chacón
-Módulo: multiplier_fsm
-
-Descripción:
-Máquina de estados que controla el multiplicador secuencial de 32 bits.
-
-Algoritmo:
-1. Espera señal start.
-2. Repite 32 ciclos:
-       si (lsb == 1) → add
-       shift
-3. Cuando termina → done = 1
-
-Entradas:
-- clk
-- reset
-- start
-- lsb (bit menos significativo del producto)
-
-Salidas:
-- add
-- shift
-- done
-*/
-
 module multiplier_fsm(
+    input  clk,
+    input  reset,
+    input  start,
+    input  lsb,
 
-    input clk,
-    input reset,
-    input start,
-    input lsb,
-
+    output reg load,
     output reg add,
     output reg shift,
     output reg done
-
 );
 
-reg [5:0] count;   // cuenta hasta 32
-reg state;
+reg [5:0] count;
+reg [1:0] state;
 
-localparam IDLE = 0;
-localparam RUN  = 1;
+localparam IDLE  = 2'b00;
+localparam CHECK = 2'b01;
+localparam ADD   = 2'b10;
+localparam SHIFT = 2'b11;
 
-always @(posedge clk or posedge reset)
-begin
-    if(reset)
-    begin
+always @(posedge clk or posedge reset) begin
+    if (reset) begin
         state <= IDLE;
-        count <= 0;
-        add   <= 0;
-        shift <= 0;
-        done  <= 0;
-    end
+        count <= 6'd0;
+        load  <= 1'b0;
+        add   <= 1'b0;
+        shift <= 1'b0;
+        done  <= 1'b0;
+    end else begin
+        // limpiar pulsos
+        load  <= 1'b0;
+        add   <= 1'b0;
+        shift <= 1'b0;
+        done  <= 1'b0;
 
-    else
-    begin
-
-        case(state)
-
-        IDLE:
-        begin
-            done <= 0;
-            add  <= 0;
-            shift <= 0;
-
-            if(start)
-            begin
-                state <= RUN;
-                count <= 0;
+        case (state)
+        IDLE: begin
+            if (start) begin
+                load  <= 1'b1;   // carga {A=0, Q=b} y M=a
+                count <= 6'd0;
+                state <= CHECK;
             end
         end
 
-        RUN:
-        begin
-            add   <= lsb;     // sumar si el bit es 1
-            shift <= 1;
+        CHECK: begin
+            if (lsb)
+                state <= ADD;    // si Q0=1 → sumar
+            else
+                state <= SHIFT;  // si Q0=0 → ir directo a shift
+        end
 
-            count <= count + 1;
+        ADD: begin
+            add   <= 1'b1;       // A = A + M
+            state <= SHIFT;      // luego desplazar
+        end
 
-            if(count == 31)
-            begin
+        SHIFT: begin
+            shift <= 1'b1;       // {A,Q} >> 1
+            count <= count + 1'b1;
+            if (count == 6'd31) begin
                 state <= IDLE;
-                done  <= 1;
-            end
+                done <= 1'b1;
+            end else
+                state <= CHECK;
         end
-
         endcase
-
     end
-
 end
 
 endmodule
