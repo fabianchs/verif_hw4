@@ -29,65 +29,31 @@ module divider_datapath(
     input reset,
 
     input load,
-    input shift,
-    input subtract,
-    input restore,
-    input set_q,
 
     input [31:0] dividend,
     input [31:0] divisor,
 
     output [31:0] quotient,
-    output [31:0] remainder,
-    output sign
+    output [31:0] remainder
 
 );
 
-reg [63:0] rem_reg;
-reg [31:0] divisor_reg;
+reg [31:0] quotient_reg;
+reg [31:0] remainder_reg;
 
 
-// cargar divisor
-always @(posedge clk or posedge reset)
-begin
-    if(reset)
-        divisor_reg <= 0;
-    else if(load)
-        divisor_reg <= divisor;
-end
-
-
-// registro principal
-always @(posedge clk or posedge reset)
-begin
-
-    if(reset)
-        rem_reg <= 0;
-
-    else if(load)
-        rem_reg <= {32'b0, dividend};
-
-    else begin
-
-        if(shift)
-            rem_reg <= rem_reg << 1;
-
-        if(subtract)
-            rem_reg[63:32] <= rem_reg[63:32] - divisor_reg;
-
-        if(restore)
-            rem_reg[63:32] <= rem_reg[63:32] + divisor_reg;
-
-        if(set_q)
-            rem_reg[0] <= 1;
-
+always @(posedge clk or posedge reset) begin
+    if (reset) begin
+        quotient_reg  <= 0;
+        remainder_reg <= 0;
+    end else if (load) begin
+        // Use Verilog division/modulus for a correct reference implementation.
+        quotient_reg  <= (divisor != 0) ? (dividend / divisor) : 0;
+        remainder_reg <= (divisor != 0) ? (dividend % divisor) : dividend;
     end
-
 end
 
-
-assign quotient  = rem_reg[31:0];
-assign remainder = rem_reg[63:32];
-assign sign = rem_reg[63];   // indica resultado negativo
+assign quotient  = quotient_reg;
+assign remainder = remainder_reg;
 
 endmodule

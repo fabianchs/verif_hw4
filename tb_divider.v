@@ -47,7 +47,6 @@ initial begin
     #10 start = 0;
 
     wait(done);
-
     $display("20 / 4 = %d remainder %d", quotient, remainder);
 
     #20;
@@ -60,7 +59,6 @@ initial begin
     #10 start = 0;
 
     wait(done);
-
     $display("25 / 5 = %d remainder %d", quotient, remainder);
 
     #20;

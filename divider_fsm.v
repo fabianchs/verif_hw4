@@ -23,102 +23,47 @@ module divider_fsm(
     input clk,
     input reset,
     input start,
-    input sign,        // indica si la resta fue negativa
 
     output reg load,
-    output reg shift,
-    output reg subtract,
-    output reg restore,
-    output reg set_q,
     output reg done
 
 );
 
-reg [5:0] count;
 reg [1:0] state;
 
-localparam IDLE     = 2'b00;
-localparam SHIFT    = 2'b01;
-localparam SUBTRACT = 2'b10;
-localparam CHECK    = 2'b11;
+localparam IDLE = 2'b00;
+localparam LOAD = 2'b01;
+localparam DONE = 2'b10;
 
 always @(posedge clk or posedge reset)
 begin
-
-    if(reset)
-    begin
+    if (reset) begin
         state <= IDLE;
-        count <= 0;
-
+        load  <= 0;
+        done  <= 0;
+    end else begin
+        // default outputs
         load <= 0;
-        shift <= 0;
-        subtract <= 0;
-        restore <= 0;
-        set_q <= 0;
         done <= 0;
-    end
 
-    else begin
-
-        load <= 0;
-        shift <= 0;
-        subtract <= 0;
-        restore <= 0;
-        set_q <= 0;
-
-        case(state)
-
-        IDLE:
-        begin
-            done <= 0;
-
-            if(start)
-            begin
+        case (state)
+        IDLE: begin
+            if (start) begin
                 load <= 1;
-                count <= 0;
-                state <= SHIFT;
+                state <= LOAD;
             end
         end
 
-
-        SHIFT:
-        begin
-            shift <= 1;
-            state <= SUBTRACT;
+        LOAD: begin
+            done  <= 1;
+            state <= DONE;
         end
 
-
-        SUBTRACT:
-        begin
-            subtract <= 1;
-            state <= CHECK;
+        DONE: begin
+            state <= IDLE;
         end
-
-
-        CHECK:
-        begin
-
-            if(sign)
-                restore <= 1;
-            else
-                set_q <= 1;
-
-            count <= count + 1;
-
-            if(count == 31)
-            begin
-                state <= IDLE;
-                done <= 1;
-            end
-            else
-                state <= SHIFT;
-
-        end
-
         endcase
-
     end
-
 end
 
 endmodule

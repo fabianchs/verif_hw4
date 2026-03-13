@@ -34,13 +34,7 @@ module divider32_top(
 
 );
 
-wire shift;
-wire subtract;
-wire restore;
 wire load;
-wire set_q;
-wire sign;
-
 
 // instancia del datapath
 divider_datapath datapath(
@@ -49,20 +43,14 @@ divider_datapath datapath(
     .reset(reset),
 
     .load(load),
-    .shift(shift),
-    .subtract(subtract),
-    .restore(restore),
-    .set_q(set_q),
 
     .dividend(dividend),
     .divisor(divisor),
 
     .quotient(quotient),
-    .remainder(remainder),
-    .sign(sign)
+    .remainder(remainder)
 
 );
-
 
 // instancia de la FSM
 divider_fsm control(
@@ -72,12 +60,6 @@ divider_fsm control(
     .start(start),
 
     .load(load),
-    .sign(sign),
-
-    .shift(shift),
-    .subtract(subtract),
-    .restore(restore),
-    .set_q(set_q),
     .done(done)
 
 );
