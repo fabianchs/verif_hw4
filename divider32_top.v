@@ -37,6 +37,7 @@ module divider32_top(
 wire shift;
 wire subtract;
 wire restore;
+wire load;
 wire sign;
 
 
@@ -46,6 +47,7 @@ divider_datapath datapath(
     .clk(clk),
     .reset(reset),
 
+    .load(load),
     .shift(shift),
     .subtract(subtract),
     .restore(restore),
@@ -67,6 +69,7 @@ divider_fsm control(
     .reset(reset),
     .start(start),
 
+    .load(load),
     .sign(sign),
 
     .shift(shift),

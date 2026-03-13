@@ -28,6 +28,7 @@ module divider_datapath(
     input clk,
     input reset,
 
+    input load,
     input shift,
     input subtract,
     input restore,
@@ -50,7 +51,7 @@ always @(posedge clk or posedge reset)
 begin
     if(reset)
         divisor_reg <= 0;
-    else
+    else if(load)
         divisor_reg <= divisor;
 end
 
@@ -60,6 +61,9 @@ always @(posedge clk or posedge reset)
 begin
 
     if(reset)
+        rem_reg <= 0;
+
+    else if(load)
         rem_reg <= {32'b0, dividend};
 
     else begin

@@ -25,6 +25,7 @@ module divider_fsm(
     input start,
     input sign,        // indica si la resta fue negativa
 
+    output reg load,
     output reg shift,
     output reg subtract,
     output reg restore,
@@ -48,6 +49,7 @@ begin
         state <= IDLE;
         count <= 0;
 
+        load <= 0;
         shift <= 0;
         subtract <= 0;
         restore <= 0;
@@ -56,6 +58,7 @@ begin
 
     else begin
 
+        load <= 0;
         shift <= 0;
         subtract <= 0;
         restore <= 0;
@@ -68,6 +71,7 @@ begin
 
             if(start)
             begin
+                load <= 1;
                 count <= 0;
                 state <= SHIFT;
             end
