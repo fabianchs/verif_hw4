@@ -1,3 +1,14 @@
+/*
+Autor: Fabian Chacón 201813154
+Tecnológico de Costa Rica
+Módulo: tb_multiplier
+
+Descripción:
+Testbench para el multiplicador secuencial 32 bits (multiplier32_top).
+
+Configura estímulos, genera reloj, resetea y verifica resultados mediante $display.
+*/
+
 `timescale 1ns/1ps
 
 module tb_multiplier;

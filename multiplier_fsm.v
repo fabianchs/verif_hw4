@@ -1,3 +1,31 @@
+/*
+Autor: Fabian Chacón 201813154
+Tecnológico de Costa Rica
+Módulo: multiplier_fsm
+
+Descripción:
+FSM de control para el multiplicador secuencial de 32 bits.
+
+Controla:
+- load
+- add
+- shift
+- done
+
+Ejemplo de uso:
+
+multiplier_fsm fsm(
+    .clk(clk),
+    .reset(reset),
+    .start(start),
+    .lsb(lsb),
+    .load(load),
+    .add(add),
+    .shift(shift),
+    .done(done)
+);
+*/
+
 module multiplier_fsm(
     input  clk,
     input  reset,

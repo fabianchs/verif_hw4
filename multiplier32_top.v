@@ -1,3 +1,22 @@
+/*
+Autor: Fabian Chacón 201813154
+Tecnológico de Costa Rica
+Módulo: multiplier32_top
+
+Descripción:
+Módulo top del multiplicador secuencial de 32 bits.
+
+Conecta:
+- multiplier_datapath
+- multiplier_fsm
+
+Entradas:
+clk, reset, start, a, b
+
+Salidas:
+result, done
+*/
+
 module multiplier32_top(
 
     input clk,

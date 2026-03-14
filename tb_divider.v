@@ -1,3 +1,14 @@
+/*
+Autor: Fabian Chacón 201813154
+Tecnológico de Costa Rica
+Módulo: tb_divider
+
+Descripción:
+Testbench para el divisor secuencial 32 bits (divider32_top).
+
+Configura estímulos, genera reloj, resetea y verifica resultados mediante $display.
+*/
+
 `timescale 1ns/1ps
 
 module tb_divider;

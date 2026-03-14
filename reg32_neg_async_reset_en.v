@@ -1,5 +1,6 @@
 /*
-Autor: Fabian Chacón
+Autor: Fabian Chacón 201813154
+Tecnológico de Costa Rica
 Módulo: reg32_neg_async_reset_en
 
 Descripción:

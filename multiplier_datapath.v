@@ -1,3 +1,32 @@
+/*
+Autor: Fabian Chacón 201813154
+Tecnológico de Costa Rica
+Módulo: multiplier_datapath
+
+Descripción:
+Datapath del multiplicador secuencial de 32 bits (algoritmo shift-add).
+
+Contiene:
+- registro product_reg
+- registro multiplicand_shifted
+- registro multiplier_reg
+- lógica de carga, suma y corrimiento
+
+Ejemplo de uso:
+
+multiplier_datapath dp(
+    .clk(clk),
+    .reset(reset),
+    .load(load),
+    .add(add),
+    .shift(shift),
+    .multiplicand(a),
+    .multiplier(b),
+    .product(product),
+    .lsb(lsb)
+);
+*/
+
 module multiplier_datapath(
     input  clk,
     input  reset,

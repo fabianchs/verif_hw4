@@ -1,5 +1,6 @@
 /*
-Autor: Fabian Chacón
+Autor: Fabian Chacón 201813154
+Tecnológico de Costa Rica
 Módulo: divider_fsm
 
 Descripción:

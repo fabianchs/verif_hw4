@@ -1,5 +1,5 @@
 /*
-Autor: Fabian Chacón Solano - 2018135154
+Autor: Fabian Chacón 201813154
 Tecnológico de Costa Rica
 Módulo: adder32
 
