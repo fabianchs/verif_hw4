@@ -19,6 +19,7 @@ typedef enum bit [1:0] {
     rst_op = 2'b11
 } operation_t;
 
+// Módulo envoltorio que selecciona entre multiplicación y división según la operación.
 module multdiv32_top(
     input  logic        clk,
     input  logic        reset,
@@ -30,6 +31,7 @@ module multdiv32_top(
     output logic        done
 );
 
+    // Señales internas para iniciar la operación correcta.
     logic        start_mul;
     logic        start_div;
     logic [63:0] mul_result;
@@ -38,7 +40,9 @@ module multdiv32_top(
     logic        mul_done;
     logic        div_done;
 
+    // Solo activa el multiplicador cuando la operación es mul_op.
     assign start_mul = (op == mul_op) ? start : 1'b0;
+    // Solo activa el divisor cuando la operación es div_op.
     assign start_div = (op == div_op) ? start : 1'b0;
 
     multiplier32_top mult_inst(
@@ -62,9 +66,11 @@ module multdiv32_top(
         .done(div_done)
     );
 
+    // Señal done activa según la operación actual.
     assign done = (op == mul_op) ? mul_done :
                   (op == div_op) ? div_done : 1'b0;
 
+    // El resultado de salida se forma con el producto o con el cociente + resto.
     always_comb begin
         case (op)
             mul_op: result = mul_result;
@@ -77,6 +83,7 @@ endmodule
 
 module tb_random_multdiv;
 
+    // Señales del reloj y control
     logic        clk;
     logic        reset;
     logic        start;
@@ -84,9 +91,11 @@ module tb_random_multdiv;
     logic [31:0] a;
     logic [31:0] b;
 
+    // Salidas del DUT
     logic [63:0] result;
     logic        done;
 
+    // Señales de verificación
     logic [63:0] expected_result;
     operation_t  expected_op;
     bit          pending;
@@ -96,6 +105,7 @@ module tb_random_multdiv;
 
     localparam int NUM_ITERATIONS = 64;
 
+    // Instancia del DUT principal que combina multiplicador y divisor
     multdiv32_top dut(
         .clk(clk),
         .reset(reset),
@@ -107,12 +117,14 @@ module tb_random_multdiv;
         .done(done)
     );
 
+    // Generador de operación aleatoria
     function automatic operation_t get_operation();
         int rand_val;
         rand_val = $random;
         get_operation = operation_t'(rand_val[1:0]);
     endfunction
 
+    // Calcula el resultado esperado según la operación seleccionada
     function automatic logic [63:0] calc_expected(
         operation_t op_i,
         logic [31:0] a_i,
@@ -125,9 +137,10 @@ module tb_random_multdiv;
         endcase
     endfunction
 
+    // Generador de reloj con periodo de 10 ns
     always #5 clk = ~clk;
 
-    // Monitor + Scoreboard
+    // Monitor y scoreboard: compara resultados cuando el DUT indica done
     always_ff @(posedge clk) begin
         if (done && pending) begin
             if (result !== expected_result) begin
@@ -143,6 +156,7 @@ module tb_random_multdiv;
     end
 
     initial begin
+        // Configuración inicial de la simulación y dump de señales
         $dumpfile("wave_random_multdiv.vcd");
         $dumpvars(0, tb_random_multdiv);
 
@@ -157,16 +171,19 @@ module tb_random_multdiv;
         pending = 1'b0;
         error_count = 0;
 
+        // Reset inicial obligatorio
         #10;
         reset = 0;
         #10;
 
+        // Ciclo de pruebas aleatorias
         for (iter = 0; iter < NUM_ITERATIONS; iter++) begin
             op = get_operation();
             a = $random;
             b = $random;
 
             if (op == rst_op) begin
+                // Reset interno como operación de prueba
                 $display("Iteracion %0d | Operacion rst_op | aplicando reset", iter);
                 start = 0;
                 op = no_op;
@@ -178,6 +195,7 @@ module tb_random_multdiv;
             end
 
             if (op == no_op) begin
+                // No-op: no se inicia ninguna operación
                 $display("Iteracion %0d | Operacion no_op | sin iniciar operacion", iter);
                 start = 0;
                 #10;
@@ -185,6 +203,7 @@ module tb_random_multdiv;
             end
 
             if (op == div_op && b == 32'd0) begin
+                // Evita división por cero ajustando el divisor
                 b = 32'd1;
             end
 
@@ -205,6 +224,7 @@ module tb_random_multdiv;
             #10;
         end
 
+        // Reporte final de la prueba.
         $display("RESULTADO FINAL: errores = %0d de %0d iteraciones", error_count, NUM_ITERATIONS);
         if (error_count == 0) begin
             $display("TESTBENCH: PASSED");
