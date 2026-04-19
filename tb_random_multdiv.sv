@@ -4,10 +4,10 @@ Descripción: Testbench SystemVerilog para verificación funcional aleatoria de 
 Fecha: 18 abril 2026
 
 Arquitectura de verificación:
-- Generator (random)
+- Generator
 - Driver
 - Monitor
-- Scoreboard básico
+- Scoreboard
 */
 
 `timescale 1ns/1ps
@@ -83,6 +83,25 @@ endmodule
 
 module tb_random_multdiv;
 
+    // Transacción desde generator hacia driver.
+    typedef struct packed {
+        operation_t      op;
+        logic [31:0]     a;
+        logic [31:0]     b;
+        int unsigned     iter;
+        bit              end_of_sequence;
+    } transaction_t;
+
+    // Mensaje del monitor hacia el scoreboard.
+    typedef struct packed {
+        operation_t      op;
+        logic [31:0]     a;
+        logic [31:0]     b;
+        logic [63:0]     result;
+        int unsigned     iter;
+        bit              end_of_sequence;
+    } monitor_item_t;
+
     // Señales del reloj y control
     logic        clk;
     logic        reset;
@@ -95,17 +114,20 @@ module tb_random_multdiv;
     logic [63:0] result;
     logic        done;
 
-    // Señales de verificación
-    logic [63:0] expected_result;
-    operation_t  expected_op;
-    bit          pending;
+    // Comunicación entre bloques
+    mailbox      gen_mbox = new();
+    mailbox      mon_mbox = new();
 
-    int unsigned iter;
-    int unsigned error_count;
+    // Control de flujo interno
+    int unsigned     iter;
+    int unsigned     error_count;
+    int unsigned     active_iter;
+    bit              transaction_active;
+    bit              end_of_test;
 
     localparam int NUM_ITERATIONS = 64;
 
-    // Instancia del DUT principal que combina multiplicador y divisor
+    // Instancia del DUT principal que combina multiplicador y divisor.
     multdiv32_top dut(
         .clk(clk),
         .reset(reset),
@@ -140,23 +162,143 @@ module tb_random_multdiv;
     // Generador de reloj con periodo de 10 ns
     always #5 clk = ~clk;
 
-    // Monitor y scoreboard: compara resultados cuando el DUT indica done
-    always_ff @(posedge clk) begin
-        if (done && pending) begin
-            if (result !== expected_result) begin
+    // Generator: crea transacciones aleatorias sin aplicar señales al DUT.
+    task automatic generator();
+        transaction_t tx;
+        for (iter = 0; iter < NUM_ITERATIONS; iter++) begin
+            tx.op = get_operation();
+            tx.a = $random;
+            tx.b = $random;
+            tx.iter = iter;
+            tx.end_of_sequence = 1'b0;
+
+            if (tx.op == div_op && tx.b == 32'd0) begin
+                tx.b = 32'd1;
+            end
+
+            gen_mbox.put(tx);
+            @(posedge clk);
+        end
+
+        tx = '{op:no_op, a:32'd0, b:32'd0, iter:0, end_of_sequence:1'b1};
+        gen_mbox.put(tx);
+    endtask
+
+    // Driver: recibe transacciones y aplica señales al DUT en sincronía con el reloj.
+    task automatic driver();
+        transaction_t tx;
+        while (1) begin
+            gen_mbox.get(tx);
+
+            if (tx.end_of_sequence) begin
+                end_of_test = 1'b1;
+                break;
+            end
+
+            if (tx.op == rst_op) begin
+                $display("Iteracion %0d | Operacion rst_op | aplicando reset", tx.iter);
+                start = 0;
+                op = no_op;
+                a = 32'd0;
+                b = 32'd0;
+                reset = 1;
+                @(posedge clk);
+                reset = 0;
+                @(posedge clk);
+                continue;
+            end
+
+            if (tx.op == no_op) begin
+                $display("Iteracion %0d | Operacion no_op | sin iniciar operacion", tx.iter);
+                start = 0;
+                op = no_op;
+                a = 32'd0;
+                b = 32'd0;
+                @(posedge clk);
+                continue;
+            end
+
+            active_iter = tx.iter;
+            transaction_active = 1'b1;
+            op = tx.op;
+            a = tx.a;
+            b = tx.b;
+            start = 1;
+            @(posedge clk);
+            start = 0;
+
+            // Mantener la operación estable hasta que el DUT indique done.
+            while (!done) begin
+                @(posedge clk);
+            end
+
+            @(posedge clk);
+            transaction_active = 1'b0;
+            op = no_op;
+            a = 32'd0;
+            b = 32'd0;
+        end
+    endtask
+
+    // Monitor: captura el resultado del DUT cuando done se activa.
+    task automatic monitor();
+        monitor_item_t item;
+        bit done_d;
+        bit end_marker_sent;
+
+        done_d = 1'b0;
+        end_marker_sent = 1'b0;
+
+        forever begin
+            @(posedge clk);
+            if (done && !done_d) begin
+                item.op = op;
+                item.a = a;
+                item.b = b;
+                item.result = result;
+                item.iter = active_iter;
+                item.end_of_sequence = 1'b0;
+                mon_mbox.put(item);
+            end
+
+            if (end_of_test && !transaction_active && !end_marker_sent) begin
+                item = '{op:no_op, a:32'd0, b:32'd0, result:64'd0, iter:0, end_of_sequence:1'b1};
+                mon_mbox.put(item);
+                end_marker_sent = 1'b1;
+                break;
+            end
+
+            done_d = done;
+        end
+    endtask
+
+    // Scoreboard: compara resultados y reporta errores.
+    task automatic scoreboard();
+        monitor_item_t item;
+        logic [63:0] expected;
+
+        error_count = 0;
+
+        forever begin
+            mon_mbox.get(item);
+            if (item.end_of_sequence) begin
+                break;
+            end
+
+            expected = calc_expected(item.op, item.a, item.b);
+            if (item.result !== expected) begin
                 $display("ERROR: Iteracion %0d | Operacion %0d | A=%0d B=%0d | esperado=%0d obtenido=%0d",
-                         iter, expected_op, a, b, expected_result, result);
+                         item.iter, item.op, item.a, item.b, expected, item.result);
                 error_count += 1;
             end else begin
                 $display("OK:    Iteracion %0d | Operacion %0d | A=%0d B=%0d | resultado=%0d",
-                         iter, expected_op, a, b, result);
+                         item.iter, item.op, item.a, item.b, item.result);
             end
-            pending <= 1'b0;
         end
-    end
+    endtask
 
     initial begin
-        // Configuración inicial de la simulación y dump de señales
+        // Configuración inicial de la simulación y dump de señales.
         $dumpfile("wave_random_multdiv.vcd");
         $dumpvars(0, tb_random_multdiv);
 
@@ -166,63 +308,23 @@ module tb_random_multdiv;
         op = no_op;
         a = 32'd0;
         b = 32'd0;
-        expected_result = 64'd0;
-        expected_op = no_op;
-        pending = 1'b0;
+        iter = 0;
         error_count = 0;
+        active_iter = 0;
+        transaction_active = 1'b0;
+        end_of_test = 1'b0;
 
-        // Reset inicial obligatorio
-        #10;
+        // Reset inicial obligatorio.
+        @(posedge clk);
+        @(posedge clk);
         reset = 0;
-        #10;
 
-        // Ciclo de pruebas aleatorias
-        for (iter = 0; iter < NUM_ITERATIONS; iter++) begin
-            op = get_operation();
-            a = $random;
-            b = $random;
-
-            if (op == rst_op) begin
-                // Reset interno como operación de prueba
-                $display("Iteracion %0d | Operacion rst_op | aplicando reset", iter);
-                start = 0;
-                op = no_op;
-                reset = 1;
-                #10;
-                reset = 0;
-                #10;
-                continue;
-            end
-
-            if (op == no_op) begin
-                // No-op: no se inicia ninguna operación
-                $display("Iteracion %0d | Operacion no_op | sin iniciar operacion", iter);
-                start = 0;
-                #10;
-                continue;
-            end
-
-            if (op == div_op && b == 32'd0) begin
-                // Evita división por cero ajustando el divisor
-                b = 32'd1;
-            end
-
-            expected_op = op;
-            expected_result = calc_expected(op, a, b);
-            pending = 1'b1;
-
-            $display("Iteracion %0d | Operacion %0d | A=%0d B=%0d | esperado=%0d",
-                     iter, op, a, b, expected_result);
-
-            wait (!done);
-            start = 1;
-            #10;
-            start = 0;
-
-            wait (done);
-            #1;
-            #10;
-        end
+        fork
+            generator();
+            driver();
+            monitor();
+            scoreboard();
+        join
 
         // Reporte final de la prueba.
         $display("RESULTADO FINAL: errores = %0d de %0d iteraciones", error_count, NUM_ITERATIONS);
