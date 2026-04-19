@@ -1,13 +1,12 @@
 /*
-Autor: Fabian Chacón
-Descripción: Testbench SystemVerilog para verificación funcional aleatoria de un DUT que combina multiplicación y división de 32 bits.
-Fecha: 18 abril 2026
+Autor: Fabian Chacón 201813154
+Tecnológico de Costa Rica
+Módulo: tb_random_multdiv.sv
 
-Arquitectura de verificación:
-- Generator
-- Driver
-- Monitor
-- Scoreboard
+Descripción:
+Testbench para el módulo multdiv32_top que combina multiplicación y división
+
+
 */
 
 `timescale 1ns/1ps
@@ -19,7 +18,7 @@ typedef enum bit [1:0] {
     rst_op = 2'b11
 } operation_t;
 
-// Módulo envoltorio que selecciona entre multiplicación y división según la operación.
+// Módulo  que selecciona entre multiplicación y división 
 module multdiv32_top(
     input  logic        clk,
     input  logic        reset,
@@ -31,7 +30,7 @@ module multdiv32_top(
     output logic        done
 );
 
-    // Señales internas para iniciar la operación correcta.
+    // Señales internas 
     logic        start_mul;
     logic        start_div;
     logic [63:0] mul_result;
@@ -66,11 +65,11 @@ module multdiv32_top(
         .done(div_done)
     );
 
-    // Señal done activa según la operación actual.
+    // Señal done activa según la operación actual
     assign done = (op == mul_op) ? mul_done :
                   (op == div_op) ? div_done : 1'b0;
 
-    // El resultado de salida se forma con el producto o con el cociente + resto.
+    // El resultado de salida se forma con el producto o con el cociente + resto
     always_comb begin
         case (op)
             mul_op: result = mul_result;
@@ -83,24 +82,24 @@ endmodule
 
 module tb_random_multdiv;
 
-    // Transacción desde generator hacia driver.
+    // Va del generator al driver
     typedef struct packed {
-        operation_t      op;
-        logic [31:0]     a;
-        logic [31:0]     b;
-        int unsigned     iter;
-        bit              end_of_sequence;
-    } transaction_t;
+        operation_t  op;
+        logic [31:0] a;
+        logic [31:0] b;
+        int unsigned iter;
+        bit          end_of_sequence;
+    } tx_t;
 
-    // Mensaje del monitor hacia el scoreboard.
+    // Lo que manda el monitor al scoreboard
     typedef struct packed {
-        operation_t      op;
-        logic [31:0]     a;
-        logic [31:0]     b;
-        logic [63:0]     result;
-        int unsigned     iter;
-        bit              end_of_sequence;
-    } monitor_item_t;
+        operation_t  op;
+        logic [31:0] a;
+        logic [31:0] b;
+        logic [63:0] result;
+        int unsigned iter;
+        bit          end_of_sequence;
+    } mon_t;
 
     // Señales del reloj y control
     logic        clk;
@@ -115,8 +114,8 @@ module tb_random_multdiv;
     logic        done;
 
     // Comunicación entre bloques
-    mailbox      gen_mbox = new();
-    mailbox      mon_mbox = new();
+    mailbox gen2drv = new();
+    mailbox mon2scb = new();
 
     // Control de flujo interno
     int unsigned     iter;
@@ -127,7 +126,7 @@ module tb_random_multdiv;
 
     localparam int NUM_ITERATIONS = 64;
 
-    // Instancia del DUT principal que combina multiplicador y divisor.
+    // Instancia del DUT principal que combina multiplicador y divisor
     multdiv32_top dut(
         .clk(clk),
         .reset(reset),
@@ -162,9 +161,9 @@ module tb_random_multdiv;
     // Generador de reloj con periodo de 10 ns
     always #5 clk = ~clk;
 
-    // Generator: crea transacciones aleatorias sin aplicar señales al DUT.
+    // Generator: crea pruebas aleatorias sin aplicar señales al DUT
     task automatic generator();
-        transaction_t tx;
+        tx_t tx;
         for (iter = 0; iter < NUM_ITERATIONS; iter++) begin
             tx.op = get_operation();
             tx.a = $random;
@@ -176,19 +175,19 @@ module tb_random_multdiv;
                 tx.b = 32'd1;
             end
 
-            gen_mbox.put(tx);
+            gen2drv.put(tx);
             @(posedge clk);
         end
 
         tx = '{op:no_op, a:32'd0, b:32'd0, iter:0, end_of_sequence:1'b1};
-        gen_mbox.put(tx);
+        gen2drv.put(tx);
     endtask
 
-    // Driver: recibe transacciones y aplica señales al DUT en sincronía con el reloj.
+    // Driver: toma la prueba y controla el DUT.
     task automatic driver();
-        transaction_t tx;
+        tx_t tx;
         while (1) begin
-            gen_mbox.get(tx);
+            gen2drv.get(tx);
 
             if (tx.end_of_sequence) begin
                 end_of_test = 1'b1;
@@ -196,7 +195,7 @@ module tb_random_multdiv;
             end
 
             if (tx.op == rst_op) begin
-                $display("Iteracion %0d | Operacion rst_op | aplicando reset", tx.iter);
+                $display("Iter %0d op=RST", tx.iter);
                 start = 0;
                 op = no_op;
                 a = 32'd0;
@@ -209,7 +208,7 @@ module tb_random_multdiv;
             end
 
             if (tx.op == no_op) begin
-                $display("Iteracion %0d | Operacion no_op | sin iniciar operacion", tx.iter);
+                $display("Iter %0d op=NOP", tx.iter);
                 start = 0;
                 op = no_op;
                 a = 32'd0;
@@ -227,7 +226,7 @@ module tb_random_multdiv;
             @(posedge clk);
             start = 0;
 
-            // Mantener la operación estable hasta que el DUT indique done.
+            // Mantienee la operación estable hasta que el DUT indique done
             while (!done) begin
                 @(posedge clk);
             end
@@ -240,9 +239,9 @@ module tb_random_multdiv;
         end
     endtask
 
-    // Monitor: captura el resultado del DUT cuando done se activa.
+    // Monitor: observa el done y manda los datos al scoreboard
     task automatic monitor();
-        monitor_item_t item;
+        mon_t item;
         bit done_d;
         bit end_marker_sent;
 
@@ -258,12 +257,12 @@ module tb_random_multdiv;
                 item.result = result;
                 item.iter = active_iter;
                 item.end_of_sequence = 1'b0;
-                mon_mbox.put(item);
+                mon2scb.put(item);
             end
 
             if (end_of_test && !transaction_active && !end_marker_sent) begin
                 item = '{op:no_op, a:32'd0, b:32'd0, result:64'd0, iter:0, end_of_sequence:1'b1};
-                mon_mbox.put(item);
+                mon2scb.put(item);
                 end_marker_sent = 1'b1;
                 break;
             end
@@ -272,33 +271,33 @@ module tb_random_multdiv;
         end
     endtask
 
-    // Scoreboard: compara resultados y reporta errores.
+    // Scoreboard: chequea el resultado y marca errores
     task automatic scoreboard();
-        monitor_item_t item;
+        mon_t item;
         logic [63:0] expected;
 
         error_count = 0;
 
         forever begin
-            mon_mbox.get(item);
+            mon2scb.get(item);
             if (item.end_of_sequence) begin
                 break;
             end
 
             expected = calc_expected(item.op, item.a, item.b);
             if (item.result !== expected) begin
-                $display("ERROR: Iteracion %0d | Operacion %0d | A=%0d B=%0d | esperado=%0d obtenido=%0d",
+                $display("Iter %0d op=%0d A=%0d B=%0d esperado=%0d got=%0d",
                          item.iter, item.op, item.a, item.b, expected, item.result);
                 error_count += 1;
             end else begin
-                $display("OK:    Iteracion %0d | Operacion %0d | A=%0d B=%0d | resultado=%0d",
+                $display("Iter %0d op=%0d A=%0d B=%0d result=%0d",
                          item.iter, item.op, item.a, item.b, item.result);
             end
         end
     endtask
 
     initial begin
-        // Configuración inicial de la simulación y dump de señales.
+        // Configuración inicial de la simulación y dump de señales
         $dumpfile("wave_random_multdiv.vcd");
         $dumpvars(0, tb_random_multdiv);
 
@@ -314,7 +313,7 @@ module tb_random_multdiv;
         transaction_active = 1'b0;
         end_of_test = 1'b0;
 
-        // Reset inicial obligatorio.
+        // Reset inicial obligatorio
         @(posedge clk);
         @(posedge clk);
         reset = 0;
@@ -326,7 +325,7 @@ module tb_random_multdiv;
             scoreboard();
         join
 
-        // Reporte final de la prueba.
+        // Reporte final de la prueba
         $display("RESULTADO FINAL: errores = %0d de %0d iteraciones", error_count, NUM_ITERATIONS);
         if (error_count == 0) begin
             $display("TESTBENCH: PASSED");
